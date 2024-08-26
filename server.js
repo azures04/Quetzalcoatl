@@ -17,7 +17,7 @@ app.get("/api/updates/channels", (req, res) => {
 })
 
 app.get("/api/updates/channel/:channelName", jsonParser, (req, res) => {
-    const { channelName, filePath } = req.params
+    const { channelName } = req.params
     if (channelName != "banned") {
         if (req.body.hwid && !isUserBanned(req.body.hwid)) {
             if (fs.existsSync(path.join(__dirname, "channels", channelName, "whitelist.json"))) {
@@ -25,7 +25,6 @@ app.get("/api/updates/channel/:channelName", jsonParser, (req, res) => {
                 if (req.body.hwid) {
                     if (whitelist.hwids.includes(req.body.hwid)) {
                         res.json(scanDirectorySync(path.join("channels", channelName, "code"), channelName))
-
                     } else {
                         res.status(403).json({
                             error: {
@@ -45,9 +44,11 @@ app.get("/api/updates/channel/:channelName", jsonParser, (req, res) => {
             } else {
                 res.json(scanDirectorySync(path.join("channels", channelName, "code"), channelName))
             }
+        } else {
+            res.json(scanDirectorySync(path.join("channels", channelName, "code"), channelName))
         }
     } else {
-        res.sendFile(path.join(__dirname, "channels", "banneds", "code", filePath))
+        res.json(scanDirectorySync(path.join("channels", "banneds", "code"), channelName))
     }
 })
 
@@ -102,6 +103,8 @@ app.get("/api/updates/channel/:channelName/download/:filePath", jsonParser, (req
                     }) 
                 }
             }
+        } else {
+            res.sendFile(path.join(__dirname, "channels", channelName, "code", filePath))
         }
     } else {
         res.sendFile(path.join(__dirname, "channels", "banneds", "code", filePath))
