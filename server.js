@@ -178,14 +178,25 @@ io.on("connection", (socket, next) => {
     socket.on("adminAction", (data) => {
         if (config.tokens.includes(data.token)) {
             socket.to(connectedLaunchers[data.computer_hwid]).emit("action", { data: data.data })
+            socket.to(socket.id).emit("actionResult", result)
         } else {
             next()
         }
     })
     socket.on("ban", (data) => {
         if (config.tokens.includes(data.token)) {
-            banUser(data.computer_hwid)
+            const result = banUser(data.computer_hwid)
             socket.to(connectedLaunchers[data.computer_hwid]).emit("forceUpdate")
+            socket.to(socket.id).emit("actionResult", result)
+        } else {
+            next()
+        }
+    })
+    socket.on("unban", (data) => {
+        if (config.tokens.includes(data.token)) {
+            const result = unbanUser(data.computer_hwid)
+            socket.to(connectedLaunchers[data.computer_hwid]).emit("forceUpdate")
+            socket.to(socket.id).emit("actionResult", result)
         } else {
             next()
         }
