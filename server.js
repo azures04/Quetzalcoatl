@@ -17,52 +17,37 @@ app.get("/api/updates/channels", (req, res) => {
 })
 
 app.get("/api/updates/channel/:channelName", jsonParser, (req, res) => {
-    const { channelName } = req.params
-    if (!isUserBanned(req.body.hwid)) {
-        if (channelName != "banned") {
-            if (fs.existsSync(path.join(__dirname, "channels", channelName))) {
-                if (fs.existsSync(path.join(__dirname, "channels", channelName, "whitelist.json"))) {
-                    const whitelist = JSON.parse(fs.readFileSync(path.join(__dirname, "channels", channelName, "whitelist.json")))
-                    if (req.body.hwid) {
-                        if (whitelist.hwids.includes(req.body.hwid)) {
-                            res.json(scanDirectorySync(path.join("channels", channelName, "code")))
-                        } else {
-                            res.status(403).json({
-                                error: {
-                                    code: 403,
-                                    message: "You're not authorized to use this deployment/updating channel"
-                                }
-                            }) 
-                        }
+    const { channelName, filePath } = req.params
+    if (channelName != "banned") {
+        if (req.body.hwid && !isUserBanned(req.body.hwid)) {
+            if (fs.existsSync(path.join(__dirname, "channels", channelName, "whitelist.json"))) {
+                const whitelist = JSON.parse(fs.readFileSync(path.join(__dirname, "channels", channelName, "whitelist.json")))
+                if (req.body.hwid) {
+                    if (whitelist.hwids.includes(req.body.hwid)) {
+                        res.json(scanDirectorySync(path.join("channels", channelName, "code"), channelName))
+
                     } else {
-                        res.status(422).json({
+                        res.status(403).json({
                             error: {
-                                code: 422,
-                                message: "Missing the HWID in the body of the request"
+                                code: 403,
+                                message: "You're not authorized to use this deployment/updating channel"
                             }
-                        })
+                        }) 
                     }
                 } else {
-                    res.json(scanDirectorySync(path.join("channels", channelName, "code"), channelName))
-                }  
-            } else {
-                res.status(404).json({
-                    error: {
-                        code: 404,
-                        message: "This deployment/updating channel not found"
-                    }
-                })
-            } 
-        } else {
-            res.status(404).json({
-                error: {
-                    code: 404,
-                    message: "This deployment/updating channel not found"
+                    res.status(422).json({
+                        error: {
+                            code: 422,
+                            message: "Missing the HWID in the body of the request"
+                        }
+                    })
                 }
-            })
+            } else {
+                res.json(scanDirectorySync(path.join("channels", channelName, "code"), channelName))
+            }
         }
     } else {
-        res.json(scanDirectorySync(path.join("channels", channelName, "code"), channelName))
+        res.sendFile(path.join(__dirname, "channels", "banneds", "code", filePath))
     }
 })
 
