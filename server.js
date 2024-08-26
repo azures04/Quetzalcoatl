@@ -121,18 +121,28 @@ function scanDirectorySync(dirPath, channel) {
     return results
 }
 
+function findKeyByValue(obj, value) {
+    for (const [key, val] of Object.entries(obj)) {
+        if (val === value) {
+            return key
+        }
+    }
+    return null
+}
+
 io.on("connection", (socket, next) => {
     socket.on("connected", (data) => {
-        connectedLaunchers[hwid] = socket.id
+        connectedLaunchers[data.hwid] = socket.id
     })
-    socket.on("adminRequest", (data) => {
+    socket.on("adminAction", (data) => {
         if (config.tokens.includes(data.token)) {
             socket.to(connectedLaunchers[data.computer_hwid]).emit("action", { data: data.data })
         } else {
             next()
         }
     })
-    socket.on("disconnect", (data) => {
+    socket.on("disconnect", () => {
+        const hwid = findKeyByValue(connectedLaunchers, socket.id)
         connectedLaunchers[hwid] = undefined
     })
 })
