@@ -1,10 +1,10 @@
 const bodyParser = require("body-parser")
 const express = require("express")
+const app = express()
 const path = require("path")
 const server = require("http").createServer(app)
 const config = require("./config.json")
 const crypto = require("crypto")
-const app = express()
 const io = require("socket.io")(server)
 const fs = require("fs")
 const connectedLaunchers = {}
@@ -108,6 +108,10 @@ app.get("/api/updates/channel/:channelName/download/:filePath", jsonParser, (req
     }
 })
 
+app.get("*", (req, res) => {
+    res.sendFile(path.join(__dirname, "static", "404.html"))
+})
+
 function calculateFileHashSync(filePath) {
     const fileBuffer = fs.readFileSync(filePath)
     const hash = crypto.createHash("sha256")
@@ -153,9 +157,9 @@ function banUser(hwid) {
     if (!banList.hwids.includes(hwid)) {
         banList.hwids.push(hwid)
         fs.writeFileSync(path.join(__dirname, "db", "banneds.json"), JSON.stringify(banList, null, 4))
-        return { status: "success", code: 200, message: `Computer <${hwid}> banned` }
+        return { status: "success", code: 200, message: `Computer <${hwid}> banned`, action: { type: "ban" } }
     } else {
-        return { status: "failed", code: 409, message: `Computer <${hwid}> already banned` }
+        return { status: "failed", code: 409, message: `Computer <${hwid}> already banned`, action: { type: "ban" } }
     }
 }
 
@@ -165,9 +169,9 @@ function unbanUser(hwid) {
         const hwidIndex = banList.hwids.find(hwid)
         banList.hwids.splice(hwidIndex, 1)
         fs.writeFileSync(path.join(__dirname, "db", "banneds.json"), JSON.stringify(banList, null, 4))
-        return { status: "success", code: 200, message: `Computer <${hwid}> unbanned` }
+        return { status: "success", code: 200, message: `Computer <${hwid}> unbanned`, action: { type: "unban" } }
     } else {
-        return { status: "failed", code: 409, message: `Computer <${hwid}> isn't banned` }
+        return { status: "failed", code: 409, message: `Computer <${hwid}> isn't banned`, action: { type: "unban" } }
     }
 }
 
@@ -175,32 +179,53 @@ io.on("connection", (socket, next) => {
     socket.on("connected", (data) => {
         connectedLaunchers[data.hwid] = socket.id
     })
+
     socket.on("adminAction", (data) => {
         if (config.tokens.includes(data.token)) {
-            socket.to(connectedLaunchers[data.computer_hwid]).emit("action", { data: data.data })
+            socket.to(connectedLaunchers[data.launcherHWID]).emit("action", { data: data.data })
             socket.to(socket.id).emit("actionResult", result)
         } else {
             next()
         }
     })
+
     socket.on("ban", (data) => {
         if (config.tokens.includes(data.token)) {
-            const result = banUser(data.computer_hwid)
-            socket.to(connectedLaunchers[data.computer_hwid]).emit("forceUpdate")
+            const result = banUser(data.launcherHWID)
+            socket.to(connectedLaunchers[data.launcherHWID]).emit("forceUpdate")
             socket.to(socket.id).emit("actionResult", result)
         } else {
             next()
         }
     })
+
     socket.on("unban", (data) => {
         if (config.tokens.includes(data.token)) {
-            const result = unbanUser(data.computer_hwid)
-            socket.to(connectedLaunchers[data.computer_hwid]).emit("forceUpdate")
+            const result = unbanUser(data.launcherHWID)
+            socket.to(connectedLaunchers[data.launcherHWID]).emit("forceUpdate")
             socket.to(socket.id).emit("actionResult", result)
         } else {
             next()
         }
     })
+
+    socket.on("isBanned", (data) => {
+        if (config.tokens.includes(data.token)) {
+            const result = isUserBanned(data.launcherHWID)
+            socket.to(socket.id).emit("actionResult", { action: { type: "isBanned" }, result })
+        } else {
+            next()
+        }
+    })
+
+    socket.on("getConnectedLaunchers", (data) => {
+        if (config.tokens.includes(data.token)) {
+            socket.to(socket.id).emit("actionResult", { action: { type: "usersList" }, result: connectedLaunchers })
+        } else {
+            next()
+        }
+    })
+
     socket.on("disconnect", () => {
         const hwid = findKeyByValue(connectedLaunchers, socket.id)
         connectedLaunchers[hwid] = undefined
