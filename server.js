@@ -1,8 +1,8 @@
 const bodyParser = require("body-parser")
 const express = require("express")
-const app = express()
+const api = express()
 const path = require("path")
-const server = require("http").createServer(app)
+const server = require("http").createServer(api)
 const config = require("./config.json")
 const crypto = require("crypto")
 const io = require("socket.io")(server)
@@ -11,12 +11,36 @@ const connectedLaunchers = {}
 
 const jsonParser = bodyParser.json()
 
-app.get("/api/updates/channels", (req, res) => {
+api.post("/api/updates/channels", (req, res) => {
     const channelsList = fs.readdirSync(path.join(__dirname, "channels"))
     res.json(channelsList)
 })
 
-app.get("/api/updates/channel/:channelName", jsonParser, (req, res) => {
+api.post("/api/updates/channels/me", jsonParser, (req, res) => {
+    if (req.body.hwid) {
+        const channelsList = JSON.parse(fs.readdirSync(path.join(__dirname, "channels")))
+        const channels = []
+        channelsList.forEach(channel => {
+            if (fs.existsSync(path.join(__dirname, "channels", channel, "whitelist.json"))) {
+                let whitelist = JSON.parse(fs.readFileSync(path.join(__dirname, "channels", channel, "whitelist.json")))
+                if (whitelist.hwids.includes(req.body.hwid)) {
+                    channels.push(channel)
+                }
+            } else {
+                channels.push(channel)
+            }
+        })
+    } else {
+        res.status(422).json({
+            error: {
+                code: 422,
+                message: "Missing the HWID in the body of the request"
+            }
+        })
+    }
+})
+
+api.post("/api/updates/channel/:channelName", jsonParser, (req, res) => {
     const { channelName } = req.params
     if (channelName != "banned") {
         if (req.body.hwid && !isUserBanned(req.body.hwid)) {
@@ -52,7 +76,7 @@ app.get("/api/updates/channel/:channelName", jsonParser, (req, res) => {
     }
 })
 
-app.get("/api/updates/channel/:channelName/download/:filePath", jsonParser, (req, res) => {
+api.post("/api/updates/channel/:channelName/download/:filePath", jsonParser, (req, res) => {
     const { channelName, filePath } = req.params
     if (channelName != "banned") {
         if (req.body.hwid && !isUserBanned(req.body.hwid)) {
@@ -111,7 +135,7 @@ app.get("/api/updates/channel/:channelName/download/:filePath", jsonParser, (req
     }
 })
 
-app.get("*", (req, res) => {
+api.get("*", (req, res) => {
     res.sendFile(path.join(__dirname, "static", "404.html"))
 })
 
