@@ -82,6 +82,5 @@ Certains canaux, comme "banned", ont des restrictions spéciales. Si un utilisat
 ## 🌟 Remarque
 
 L'API utilise des `HWID` pour identifier les utilisateurs. Cela permet de restreindre l'accès à certains canaux de déploiement ou fichiers, garantissant que seules les personnes autorisées peuvent effectuer certaines mises à jour.
- 
 
-N'hésitez pas à explorer ces endpoints pour gérer efficacement les mises à jour de votre application et à utiliser les informations renvoyées pour sécuriser et contrôler les déploiements selon vos besoins ! 🎉
+*écrit par ChatGPT*
