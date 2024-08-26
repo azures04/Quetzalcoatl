@@ -9,7 +9,7 @@ Cette API vous permet d'accéder aux différentes versions de votre application 
 ```json
 [
     "stable",
-    "beta",
+    "banneds",
     "canary"
 ]
 ```
